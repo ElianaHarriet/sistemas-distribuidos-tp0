@@ -49,7 +49,7 @@ def generate_docker_compose(num_clients):
         }
     }
 
-    with open('docker-compose-dev.yaml', 'w') as file:
+    with open('docker-compose-dev1.1.yaml', 'w') as file:
         yaml.dump(docker_compose, file, default_flow_style=False, sort_keys=False)
 
 def main():

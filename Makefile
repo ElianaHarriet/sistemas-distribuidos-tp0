@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
+VERS := ""
 
 GIT_REMOTE = github.com/7574-sistemas-distribuidos/docker-compose-init
 
@@ -26,14 +27,14 @@ docker-image:
 .PHONY: docker-image
 
 docker-compose-up: docker-image
-	docker compose -f docker-compose-dev.yaml up -d --build
+	docker compose -f docker-compose-dev$(VERS).yaml up -d --build
 .PHONY: docker-compose-up
 
 docker-compose-down:
-	docker compose -f docker-compose-dev.yaml stop -t 1
-	docker compose -f docker-compose-dev.yaml down
+	docker compose -f docker-compose-dev$(VERS).yaml stop -t 1
+	docker compose -f docker-compose-dev$(VERS).yaml down
 .PHONY: docker-compose-down
 
 docker-compose-logs:
-	docker compose -f docker-compose-dev.yaml logs -f
+	docker compose -f docker-compose-dev$(VERS).yaml logs -f
 .PHONY: docker-compose-logs

@@ -2,6 +2,9 @@
 
 set -o allexport; source .env; set +o allexport
 
+docker network create testing_net
+docker network connect testing_net server
+
 docker build -f ./DockerfileNetcat -t netcat_test:latest .
 response=$(docker run --env-file ./.env --network testing_net netcat_test:latest)
 

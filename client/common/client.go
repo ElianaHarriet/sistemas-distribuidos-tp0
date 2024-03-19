@@ -15,6 +15,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopLapse     time.Duration
 	LoopPeriod    time.Duration
+	Bet		   	  *Bet
 }
 
 // Client Entity that encapsulates how
@@ -99,26 +100,29 @@ loop:
 		// TODO: Modify the send to avoid short-write
 		fmt.Fprintf(
 			c.conn,
-			"[CLIENT %v] Message N°%v\n",
+			"[CLIENT %v] %s\n",
 			c.config.ID,
-			msgID,
+			c.config.Bet.ToStr(),
 		)
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
+		_, err := bufio.NewReader(c.conn).ReadString('\n')
 		msgID++
 		c.conn.Close()
 		c.conn = nil
 
 		if err != nil {
-			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
-                c.config.ID,
-				err,
+			log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",
+				c.config.Bet.GetPersonalID(),
+				c.config.Bet.GetBetID(),
 			)
 			return
 		}
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-            c.config.ID,
-            msg,
+		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v",
+            c.config.Bet.GetPersonalID(),
+			c.config.Bet.GetBetID(),
         )
+
+		// Duplicate the bet
+		c.config.Bet = c.config.Bet.Duplicate()
 
 		// Wait a time between sending one message and the next one
 		time.Sleep(c.config.LoopPeriod)

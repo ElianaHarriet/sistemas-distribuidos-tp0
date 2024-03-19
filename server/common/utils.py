@@ -49,3 +49,15 @@ def load_bets() -> list[Bet]:
         for row in reader:
             yield Bet(row[0], row[1], row[2], row[3], row[4], row[5])
 
+"""
+Parses a string to a Bet object.
+Example of string: "[CLIENT 1] Bet -> [ID: 7577, Name: Santiago Lionel, Surname: Lorca, PersonalID: 30904465, BirthDate: 1999-03-17]"
+"""
+def parse_bet(agency: str, bet_str: str) -> Bet:
+    bet_str = bet_str.replace(" ", "")
+    bet_data = bet_str.split("->")[1].strip()[1:-1]
+    # bet_data to dictionary
+    bet_data = dict([pair.split(":") for pair in bet_data.split(",")])
+    return bet_data
+
+print(parse_bet("hola", "[CLIENT 1] Bet -> [ID: 7577, Name: Santiago Lionel, Surname: Lorca, PersonalID: 30904465, BirthDate: 1999-03-17]"))

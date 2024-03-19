@@ -48,6 +48,33 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+// CloseClientSocket Closes the client socket. In case of
+// failure, error is printed in stdout/stderr and exit 1
+// is returned
+func (c *Client) closeClientSocket() error {
+	if c.conn != nil {
+		err := c.conn.Close()
+		if err != nil {
+			log.Fatalf(
+				"action: close_connection | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+		}
+	}
+	return nil
+}
+
+// StopClientLoop Stops the client loop
+func (c *Client) StopClientLoop() {
+    defer func() {
+        log.Infof("action: stop_loop | result: success | client_id: %v",
+            c.config.ID,
+        )
+        c.closeClientSocket()
+    }()
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
 	// autoincremental msgID to identify every message sent
@@ -67,6 +94,7 @@ loop:
 
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
+		defer c.conn.Close()
 
 		// TODO: Modify the send to avoid short-write
 		fmt.Fprintf(
@@ -78,6 +106,7 @@ loop:
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		msgID++
 		c.conn.Close()
+		c.conn = nil
 
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",

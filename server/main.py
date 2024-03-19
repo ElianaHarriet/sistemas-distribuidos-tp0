@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from configparser import ConfigParser
-from common.server import Server
+from common.server_manager import ServerManager
 import logging
 import os
 
@@ -33,6 +33,19 @@ def initialize_config():
 
     return config_params
 
+def initialize_log(logging_level):
+    """
+    Python custom logging initialization
+
+    Current timestamp is added to be able to identify in docker
+    compose logs the date when the log has arrived
+    """
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging_level,
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+
 
 def main():
     config_params = initialize_config()
@@ -47,22 +60,9 @@ def main():
     logging.debug(f"action: config | result: success | port: {port} | "
                   f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
 
-    # Initialize server and start server loop
-    server = Server(port, listen_backlog)
-    server.run()
-
-def initialize_log(logging_level):
-    """
-    Python custom logging initialization
-
-    Current timestamp is added to be able to identify in docker
-    compose logs the date when the log has arrived
-    """
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging_level,
-        datefmt='%Y-%m-%d %H:%M:%S',
-    )
+    # Initialize server manager and start server loop
+    server_manager = ServerManager(port, listen_backlog)
+    server_manager.run()
 
 
 if __name__ == "__main__":

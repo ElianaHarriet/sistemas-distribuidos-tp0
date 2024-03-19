@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"os"
+    "os/signal"
+    "syscall"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -87,6 +90,13 @@ func PrintConfig(v *viper.Viper) {
     )
 }
 
+// handleSigterm Receives a channel of os.Signal and a client. It waits for a signal
+// and then stops the client loop
+func handleSigterm(sigs <-chan os.Signal, client *common.Client) {
+    <-sigs
+    client.StopClientLoop()
+}
+
 func main() {
 	v, err := InitConfig()
 	if err != nil {
@@ -108,5 +118,13 @@ func main() {
 	}
 
 	client := common.NewClient(clientConfig)
+
+	// Create a channel to receive OS signals.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM)
+
+	// Handle SIGTERM signal
+	go handleSigterm(sigs, client)
+
 	client.StartClientLoop()
 }

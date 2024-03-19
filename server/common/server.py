@@ -8,6 +8,7 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self._connections = set()
 
     def run(self):
         """
@@ -42,6 +43,7 @@ class Server:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
+            self._connections.remove(client_sock)
 
     def __accept_new_connection(self):
         """
@@ -54,5 +56,15 @@ class Server:
         # Connection arrived
         logging.info('action: accept_connections | result: in_progress')
         c, addr = self._server_socket.accept()
+        self._connections.add(c)
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return c
+    
+    def stop(self):
+        """
+        Closes all the file descriptors and sockets
+        """
+        while self._connections:
+            conn = self._connections.pop()
+            conn.close()
+        self._server_socket.close()

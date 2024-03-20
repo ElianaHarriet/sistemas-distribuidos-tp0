@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"time"
@@ -62,8 +61,27 @@ func (c *Client) closeClientSocket() error {
 				err,
 			)
 		}
+		c.conn = nil
 	}
 	return nil
+}
+
+// sendMessage Sends a message to the server
+// In case of failure, error is returned
+// This method avoids short-write
+func (c *Client) sendMessage(msg string) error {
+    msgBytes := []byte(fmt.Sprintf("%s\n", msg))
+
+    totalSent := 0
+    for totalSent < len(msgBytes) {
+        sent, err := c.conn.Write(msgBytes[totalSent:])
+        if err != nil {
+            return err
+        }
+        totalSent += sent
+    }
+
+    return nil
 }
 
 // StopClientLoop Stops the client loop
@@ -78,8 +96,6 @@ func (c *Client) StopClientLoop() {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
-	// autoincremental msgID to identify every message sent
-	msgID := 1
 
 loop:
 	// Send messages if the loopLapse threshold has not been surpassed
@@ -93,21 +109,18 @@ loop:
 		default:
 		}
 
-		// Create the connection the server in every loop iteration. Send an
+		// Create the connection the server in every loop iteration
 		c.createClientSocket()
 		defer c.conn.Close()
 
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] %s\n",
+		message := fmt.Sprintf(
+			"[CLIENT %v] %s",
 			c.config.ID,
 			c.config.Bet.ToStr(),
 		)
-		_, err := bufio.NewReader(c.conn).ReadString('\n')
-		msgID++
-		c.conn.Close()
-		c.conn = nil
+		err := c.sendMessage(message)
+
+		c.closeClientSocket()
 
 		if err != nil {
 			log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",

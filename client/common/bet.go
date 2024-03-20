@@ -34,7 +34,7 @@ func (b *Bet) ToStr() string {
 // Duplicate Returns a new bet with the same values as the original but with a new ID
 func (b *Bet) Duplicate() *Bet {
 	return &Bet{
-		ID: b.ID + 1,
+		ID: (b.ID % 9999) + 1,
 		Name: b.Name,
 		Surname: b.Surname,
 		PersonalID: b.PersonalID,

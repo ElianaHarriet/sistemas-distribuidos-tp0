@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"strings"
-	"time"
 	"os"
-    "os/signal"
-    "syscall"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+	"math/rand"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -38,7 +39,6 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "period")
 	v.BindEnv("loop", "lapse")
 	v.BindEnv("log", "level")
-	v.BindEnv("bet", "id")
 	v.BindEnv("bet", "name")
 	v.BindEnv("bet", "surname")
 	v.BindEnv("bet", "personal_id")
@@ -87,13 +87,12 @@ func InitLogger(logLevel string) error {
 // PrintConfig Print all the configuration parameters of the program.
 // For debugging purposes only
 func PrintConfig(v *viper.Viper) {
-	logrus.Infof("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | bet_id: %s | bet_name: %s | bet_surname: %s | bet_personal_id: %s | bet_birth_date: %s",
+	logrus.Infof("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | bet_name: %s | bet_surname: %s | bet_personal_id: %s | bet_birth_date: %s",
 	    v.GetString("id"),
 	    v.GetString("server.address"),
 	    v.GetDuration("loop.lapse"),
 	    v.GetDuration("loop.period"),
 	    v.GetString("log.level"),
-		v.GetString("bet.id"),
 		v.GetString("bet.name"),
 		v.GetString("bet.surname"),
 		v.GetString("bet.personal_id"),
@@ -106,6 +105,16 @@ func PrintConfig(v *viper.Viper) {
 func handleSigterm(sigs <-chan os.Signal, client *common.Client) {
     <-sigs
     client.StopClientLoop()
+}
+
+// setRandomSeed Set the random seed to the current time
+func setRandomSeed() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+// randomInt Generates a random number between min and max
+func randomInt(min, max int) int {
+	return min + rand.Intn(max-min)
 }
 
 func main() {
@@ -121,8 +130,8 @@ func main() {
 	// Print program config with debugging purposes
 	PrintConfig(v)
 
-	// Create a bet
-	bet := common.NewBet(v.GetInt("bet.id"), v.GetString("bet.name"), v.GetString("bet.surname"), v.GetInt("bet.personal_id"), v.GetString("bet.birth_date"))
+	setRandomSeed()
+	bet := common.NewBet(randomInt(1, 9999), v.GetString("bet.name"), v.GetString("bet.surname"), v.GetInt("bet.personal_id"), v.GetString("bet.birth_date"))
 
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),

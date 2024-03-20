@@ -7,7 +7,6 @@ loop:
 log:
   level: "info"
 bet:
-  id: 7574
   name: "Santiago Lionel"
   surname: "Lorca"
   personal_id: 30904465

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"math/rand"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -43,6 +42,9 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("bet", "surname")
 	v.BindEnv("bet", "personal_id")
 	v.BindEnv("bet", "birth_date")
+	v.BindEnv("bet_chunk", "size")
+	v.BindEnv("bet_chunk", "dir_data_path")
+	v.BindEnv("bet_chunk", "file_name")
 	
 
 	// Try to read configuration from config file. If config file
@@ -87,8 +89,8 @@ func InitLogger(logLevel string) error {
 // PrintConfig Print all the configuration parameters of the program.
 // For debugging purposes only
 func PrintConfig(v *viper.Viper) {
-	logrus.Infof("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | bet_name: %s | bet_surname: %s | bet_personal_id: %s | bet_birth_date: %s",
-	    v.GetString("id"),
+	logrus.Infof("action: config | result: success | client_id: %d | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | bet_name: %s | bet_surname: %s | bet_personal_id: %s | bet_birth_date: %s | bet_chunk_size: %d | bet_chunk_dir_data_path: %s | bet_chunk_file_name: %s",
+	    v.GetInt("id"),
 	    v.GetString("server.address"),
 	    v.GetDuration("loop.lapse"),
 	    v.GetDuration("loop.period"),
@@ -97,6 +99,9 @@ func PrintConfig(v *viper.Viper) {
 		v.GetString("bet.surname"),
 		v.GetString("bet.personal_id"),
 		v.GetString("bet.birth_date"),
+		v.GetInt("bet_chunk.size"),
+		v.GetString("bet_chunk.dir_data_path"),
+		v.GetString("bet_chunk.file_name"),
     )
 }
 
@@ -105,16 +110,6 @@ func PrintConfig(v *viper.Viper) {
 func handleSigterm(sigs <-chan os.Signal, client *common.Client) {
     <-sigs
     client.StopClientLoop()
-}
-
-// setRandomSeed Set the random seed to the current time
-func setRandomSeed() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-// randomInt Generates a random number between min and max
-func randomInt(min, max int) int {
-	return min + rand.Intn(max-min)
 }
 
 func main() {
@@ -130,15 +125,14 @@ func main() {
 	// Print program config with debugging purposes
 	PrintConfig(v)
 
-	setRandomSeed()
-	bet := common.NewBet(randomInt(1, 9999), v.GetString("bet.name"), v.GetString("bet.surname"), v.GetInt("bet.personal_id"), v.GetString("bet.birth_date"))
-
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
+		ID:            v.GetInt("id"),
 		LoopLapse:     v.GetDuration("loop.lapse"),
 		LoopPeriod:    v.GetDuration("loop.period"),
-		Bet:           bet,
+		BetChunkSize:  v.GetInt("bet_chunk.size"),
+		DirDataPath:   v.GetString("bet_chunk.dir_data_path"),
+		FileDataName:  v.GetString("bet_chunk.file_name"),
 	}
 
 	client := common.NewClient(clientConfig)

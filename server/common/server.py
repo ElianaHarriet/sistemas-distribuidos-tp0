@@ -33,11 +33,11 @@ class Server:
         msg = self.__receive_line(client_sock)
         if msg is None:
             return
-        bet = parse_bet(msg)
-        self.__send_message(client_sock, f"Apuesta recibida | Numero: {bet.number}")
+        bets = parse_bets(msg)
+        self.__send_message(client_sock, f"Apuestas recibidas | Cantidad: {len(bets)}")
         self.__close_client_connection(client_sock)
-        store_bets([bet])
-        logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+        store_bets(bets)
+        # logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
 
     def __receive_line(self, client_sock):
         """

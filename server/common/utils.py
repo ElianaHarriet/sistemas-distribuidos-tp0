@@ -51,11 +51,17 @@ def load_bets() -> list[Bet]:
 
 """
 Parses a string to a Bet object.
-Example of string: "[CLIENT 1] Bet -> [AgencyID: 000, ID: 7577, Name: Santiago Lionel, Surname: Lorca, PersonalID: 30904465, BirthDate: 1999-03-17]"
+Example of string: "[AgencyID: 000, ID: 7577, Name: Santiago Lionel, Surname: Lorca, PersonalID: 30904465, BirthDate: 1999-03-17]"
 Agency is the number of the client.
 """
 def parse_bet(bet_str: str) -> Bet:
-    bet_str = bet_str.replace(" ", "")
-    bet_data = bet_str.split("->")[1].strip()[1:-1]
-    bet_data = dict([pair.split(":") for pair in bet_data.split(",")])
+    bet_data = dict([pair.split(":") for pair in bet_str.split(",")])
     return Bet(bet_data["AgencyID"], bet_data["Name"], bet_data["Surname"], bet_data["PersonalID"], bet_data["BirthDate"], bet_data["ID"])
+
+"""
+Parses a string to a list of Bet objects.
+Example of string: "Bets -> [bet1][bet2][bet3]"
+"""
+def parse_bets(bets_str: str) -> list[Bet]:
+    bets_str = bets_str.split("Bets -> ")[1][1:-1]
+    return [parse_bet(bet_str) for bet_str in bets_str.split("][")]

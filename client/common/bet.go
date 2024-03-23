@@ -54,7 +54,7 @@ func FromCSV(agencyID int, record []string) (*Bet, error) {
 
 // ToStr Returns a string representation of the bet
 func (b *Bet) ToStr() string {
-	return fmt.Sprintf("[AgencyID: %d, ID: %d, Name: %s, Surname: %s, PersonalID: %d, BirthDate: %s]",
+	return fmt.Sprintf("[AgencyID:%d,ID:%d,Name:%s,Surname:%s,PersonalID:%d,BirthDate:%s]",
 						b.AgencyID, b.ID, b.Name, b.Surname, b.PersonalID, b.BirthDate)
 }
 

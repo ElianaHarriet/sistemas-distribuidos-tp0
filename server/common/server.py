@@ -1,6 +1,6 @@
 import socket
 import logging
-from common.utils import parse_bet, store_bets
+from common.utils import parse_bets, store_bets
 
 
 class Server:
@@ -33,11 +33,18 @@ class Server:
         msg = self.__receive_line(client_sock)
         if msg is None:
             return
-        bets = parse_bets(msg)
+        try:
+            bets = parse_bets(msg)
+        except Exception as e:
+            logging.error(f'action: parse_bets | result: fail | error: {e}')
+            self.__send_message(client_sock, "Error al parsear las apuestas")
+            self.__close_client_connection(client_sock)
+            return
         self.__send_message(client_sock, f"Apuestas recibidas | Cantidad: {len(bets)}")
         self.__close_client_connection(client_sock)
         store_bets(bets)
-        # logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+        for bet in bets:
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
 
     def __receive_line(self, client_sock):
         """

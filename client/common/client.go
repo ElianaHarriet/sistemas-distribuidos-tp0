@@ -183,9 +183,6 @@ func (c *Client) StartClientLoop() {
 			}
 			bets = append(bets, bet)
 		}
-		if end {
-			break
-		}
 
 		// Create the connection the server in every loop iteration
 		err = c.createClientSocket()
@@ -203,7 +200,7 @@ func (c *Client) StartClientLoop() {
 		for i, bet := range bets {
 			betStrings[i] = bet.ToStr()
 		}
-		joinedBets := strings.Join(betStrings, "-")
+		joinedBets := strings.Join(betStrings, "")
 
 		message := fmt.Sprintf(
 			"[CLIENT %v] Bets -> %s",
@@ -229,6 +226,10 @@ func (c *Client) StartClientLoop() {
 			return
 		}
 		LogBets(bets, "success")
+
+		if end {
+			break
+		}
 
 		select {
 		case <-time.After(c.config.LoopPeriod):

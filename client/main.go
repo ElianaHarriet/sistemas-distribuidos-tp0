@@ -45,7 +45,6 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("bet_chunk", "size")
 	v.BindEnv("bet_chunk", "dir_data_path")
 	v.BindEnv("bet_chunk", "file_name")
-	
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -77,11 +76,11 @@ func InitLogger(logLevel string) error {
 		return err
 	}
 
-    customFormatter := &logrus.TextFormatter{
-      TimestampFormat: "2006-01-02 15:04:05",
-      FullTimestamp: false,
-    }
-    logrus.SetFormatter(customFormatter)
+	customFormatter := &logrus.TextFormatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   false,
+	}
+	logrus.SetFormatter(customFormatter)
 	logrus.SetLevel(level)
 	return nil
 }
@@ -90,11 +89,11 @@ func InitLogger(logLevel string) error {
 // For debugging purposes only
 func PrintConfig(v *viper.Viper) {
 	logrus.Infof("action: config | result: success | client_id: %d | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | bet_name: %s | bet_surname: %s | bet_personal_id: %s | bet_birth_date: %s | bet_chunk_size: %d | bet_chunk_dir_data_path: %s | bet_chunk_file_name: %s",
-	    v.GetInt("id"),
-	    v.GetString("server.address"),
-	    v.GetDuration("loop.lapse"),
-	    v.GetDuration("loop.period"),
-	    v.GetString("log.level"),
+		v.GetInt("id"),
+		v.GetString("server.address"),
+		v.GetDuration("loop.lapse"),
+		v.GetDuration("loop.period"),
+		v.GetString("log.level"),
 		v.GetString("bet.name"),
 		v.GetString("bet.surname"),
 		v.GetString("bet.personal_id"),
@@ -102,14 +101,14 @@ func PrintConfig(v *viper.Viper) {
 		v.GetInt("bet_chunk.size"),
 		v.GetString("bet_chunk.dir_data_path"),
 		v.GetString("bet_chunk.file_name"),
-    )
+	)
 }
 
 // handleSigterm Receives a channel of os.Signal and a client. It waits for a signal
 // and then stops the client loop
 func handleSigterm(sigs <-chan os.Signal, client *common.Client) {
-    <-sigs
-    client.StopClientLoop()
+	<-sigs
+	client.StopClient()
 }
 
 func main() {

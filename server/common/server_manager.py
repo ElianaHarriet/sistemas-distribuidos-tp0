@@ -3,8 +3,8 @@ import logging
 import signal
 import sys
 class ServerManager:
-    def __init__(self, port, listen_backlog):
-        self.server = Server(port, listen_backlog)
+    def __init__(self, port, listen_backlog, n_agencies):
+        self.server = Server(port, listen_backlog, n_agencies)
 
     def run(self):
         # Register the signal handler

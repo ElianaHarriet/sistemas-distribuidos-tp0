@@ -47,9 +47,6 @@ class Server:
         self.__close_client_connection(client_sock)
 
     def __manage_new_bets(self, msg, client_sock):
-        if self.__all_agencies_done():
-            self.__send_message(client_sock, "ERROR: Ya se recibieron todas las apuestas")
-            return
         try:
             bets = parse_bets(msg)
         except Exception as e:

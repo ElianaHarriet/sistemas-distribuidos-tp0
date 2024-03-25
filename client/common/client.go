@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"time"
 	"os"
 	"strconv"
 	"strings"
-	"time"
-
+	
 	log "github.com/sirupsen/logrus"
 )
 
@@ -182,6 +182,7 @@ func LogBets(bets []*Bet, result string) {
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
     err := c.openFile()
+	defer c.data_file.Close()
     if err != nil {
         log.Fatalf("action: open_file | result: fail | client_id: %v | error: %v",
             c.config.ID,
@@ -189,7 +190,7 @@ func (c *Client) StartClientLoop() {
         )
         return
     }
-	defer c.data_file.Close()
+	
     reader := csv.NewReader(c.data_file)
 
     for  {
@@ -215,6 +216,7 @@ func (c *Client) StartClientLoop() {
 
         // Create the connection the server in every loop iteration
         err = c.createClientSocket()
+		defer c.conn.Close()
         if err != nil {
             log.Fatalf("action: connect | result: fail | client_id: %v | error: %v",
                 c.config.ID,
@@ -223,8 +225,7 @@ func (c *Client) StartClientLoop() {
             c.StopClient()
             return
         }
-        defer c.conn.Close()
-
+        
         betStrings := make([]string, len(bets))
         for i, bet := range bets {
             betStrings[i] = bet.ToStr()
@@ -260,14 +261,14 @@ func (c *Client) StartClientLoop() {
             break
         }
 
-        select {
-        case <-time.After(c.config.LoopPeriod):
-            // Wait a time between sending one message and the next one
-        case <-c.stop_chan:
-            log.Warnf("action: loop_finished | result: aborted | client_id: %v", c.config.ID)
-            return
-        }
-    }
+		select {
+		case <-time.After(c.config.LoopPeriod):
+			// Wait a time between sending one message and the next one
+		case <-c.stop_chan:
+			log.Warnf("action: loop_finished | result: aborted | client_id: %v", c.config.ID)
+			return
+		}
+	}
 
 	wait := true
 	for wait {
@@ -285,7 +286,6 @@ func (c *Client) StartClientLoop() {
 	}
 
     log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
-    c.StopClient()
 }
 
 func (c *Client) getWinners() (bool, error) {

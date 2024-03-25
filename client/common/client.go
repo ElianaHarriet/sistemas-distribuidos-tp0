@@ -161,7 +161,7 @@ func (c *Client) closeFile() error {
 func (c *Client) StopClient() {
 	defer func() {
 		c.stop_chan <- true
-log.Infof("action: stop_loop | result: success | client_id: %v",
+		log.Infof("action: stop_loop | result: success | client_id: %v",
 			c.config.ID,
 		)
 		c.closeClientSocket()
@@ -181,93 +181,93 @@ func LogBets(bets []*Bet, result string) {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
-	err := c.openFile()
+    err := c.openFile()
+    if err != nil {
+        log.Fatalf("action: open_file | result: fail | client_id: %v | error: %v",
+            c.config.ID,
+            err,
+        )
+        return
+    }
 	defer c.data_file.Close()
-	if err != nil {
-		log.Fatalf("action: open_file | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-		return
-	}
-	reader := csv.NewReader(c.data_file)
+    reader := csv.NewReader(c.data_file)
 
-	for {
-		bets := make([]*Bet, 0, c.config.BetChunkSize)
-		end := false
-		for i := 0; i < c.config.BetChunkSize; i++ {
-			bet, err := ReadBet(c.config.ID, reader)
-			if err == io.EOF {
-				end = true
-				break
-			}
-			if err != nil {
-				log.Infof("action: read_bet | result: fail | client_id: %v | error: %v",
-					c.config.ID,
-					err,
-				)
-				c.StopClient()
-				return
-			}
-			bets = append(bets, bet)
+    for  {
+        bets := make([]*Bet, 0, c.config.BetChunkSize)
+        end := false
+        for i := 0; i < c.config.BetChunkSize; i++ {
+            bet, err := ReadBet(c.config.ID, reader)
+            if err == io.EOF {
+                end = true
+                break
+            }
+            if err != nil {
+                log.Infof("action: read_bet | result: fail | client_id: %v | error: %v",
+                    c.config.ID,
+                    err,
+                )
+                c.StopClient()
+                return
+            }
+            bets = append(bets, bet)
 			c.personal_ids[bet.GetPersonalID()] = true
-		}
+        }
 
-		// Create the connection the server in every loop iteration
-		err = c.createClientSocket()
-		defer c.conn.Close()
-		if err != nil {
-			log.Fatalf("action: connect | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.StopClient()
-			return
-		}
+        // Create the connection the server in every loop iteration
+        err = c.createClientSocket()
+        if err != nil {
+            log.Fatalf("action: connect | result: fail | client_id: %v | error: %v",
+                c.config.ID,
+                err,
+            )
+            c.StopClient()
+            return
+        }
+        defer c.conn.Close()
 
-		betStrings := make([]string, len(bets))
-		for i, bet := range bets {
-			betStrings[i] = bet.ToStr()
-		}
-		joinedBets := strings.Join(betStrings, "")
+        betStrings := make([]string, len(bets))
+        for i, bet := range bets {
+            betStrings[i] = bet.ToStr()
+        }
+        joinedBets := strings.Join(betStrings, "")
 
-		message := fmt.Sprintf(
-			"[CLIENT %v] Bets -> %s",
-			c.config.ID,
-			joinedBets,
-		)
-		err = c.sendMessage(message)
+        message := fmt.Sprintf(
+            "[CLIENT %v] Bets -> %s",
+            c.config.ID,
+            joinedBets,
+        )
+        err = c.sendMessage(message)
 
-		if err != nil {
-			LogBets(bets, "fail")
-			c.StopClient()
-			return
-		}
+        if err != nil {
+            LogBets(bets, "fail")
+            c.StopClient()
+            return
+        }
 
-		err = c.closeClientSocket()
+        err = c.closeClientSocket()
 
-		if err != nil {
-			log.Fatalf("action: close_connection | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.StopClient()
-			return
-		}
-		LogBets(bets, "success")
+        if err != nil {
+            log.Fatalf("action: close_connection | result: fail | client_id: %v | error: %v",
+                c.config.ID,
+                err,
+            )
+            c.StopClient()
+            return
+        }
+        LogBets(bets, "success")
 
-		if end {
-			break
-		}
+        if end {
+            break
+        }
 
-		select {
-		case <-time.After(c.config.LoopPeriod):
-			// Wait a time between sending one message and the next one
-		case <-c.stop_chan:
-			log.Warnf("action: loop_finished | result: aborted | client_id: %v", c.config.ID)
-			return
-		}
-	}
+        select {
+        case <-time.After(c.config.LoopPeriod):
+            // Wait a time between sending one message and the next one
+        case <-c.stop_chan:
+            log.Warnf("action: loop_finished | result: aborted | client_id: %v", c.config.ID)
+            return
+        }
+    }
 
 	wait := true
 	for wait {
@@ -284,9 +284,8 @@ func (c *Client) StartClientLoop() {
 		}
 	}
 
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
-	c.StopClient()
-	os.Exit(0)
+    log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+    c.StopClient()
 }
 
 func (c *Client) getWinners() (bool, error) {
@@ -333,25 +332,10 @@ func (c *Client) getWinners() (bool, error) {
 
 	wait := true
 	if strings.HasPrefix(result, "OK") {
-		winners := strings.Split(strings.Split(result, ":")[2], ",")
-		num_winners := 0
-		for _, winner := range winners {
-			winner_id, err := strconv.Atoi(winner)
-			if err != nil {
-				log.Fatalf("action: convert_winner | result: fail | client_id: %v | error: %v",
-					c.config.ID,
-					err,
-				)
-				c.StopClient()
-				return false, err
-			}
-			if _, ok := c.personal_ids[winner_id]; ok {
-				num_winners++
-			}
+		shouldReturn, returnValue1 := c.logWinners(result)
+		if shouldReturn {
+			return false, returnValue1
 		}
-		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v",
-			num_winners,
-		)
 		wait = false
 	} else if strings.HasPrefix(result, "ERROR") {
 		log.Fatalf("action: consulta_ganadores | result: fail | %v",
@@ -377,4 +361,27 @@ func (c *Client) getWinners() (bool, error) {
 		return false, err
 	}
 	return wait, nil
+}
+
+func (c *Client) logWinners(result string) (bool, error) {
+	winners := strings.Split(strings.Split(result, ":")[2], ",")
+	num_winners := 0
+	for _, winner := range winners {
+		winner_id, err := strconv.Atoi(winner)
+		if err != nil {
+			log.Fatalf("action: convert_winner | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			c.StopClient()
+			return true, err
+		}
+		if _, ok := c.personal_ids[winner_id]; ok {
+			num_winners++
+		}
+	}
+	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v",
+		num_winners,
+	)
+	return false, nil
 }

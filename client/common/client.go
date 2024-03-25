@@ -1,16 +1,16 @@
 package common
 
 import (
+	"bytes"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"bytes"
-	"errors"
-	"strconv"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -28,10 +28,10 @@ type ClientConfig struct {
 
 // Client Entity that encapsulates how
 type Client struct {
-	config    ClientConfig
-	conn      net.Conn
-	data_file *os.File
-	stop_chan chan bool
+	config       ClientConfig
+	conn         net.Conn
+	data_file    *os.File
+	stop_chan    chan bool
 	personal_ids map[int]bool
 }
 
@@ -39,10 +39,10 @@ type Client struct {
 // as a parameter
 func NewClient(config ClientConfig) *Client {
 	client := &Client{
-		config:    config,
-		conn:      nil,
-		data_file: nil,
-		stop_chan: make(chan bool),
+		config:       config,
+		conn:         nil,
+		data_file:    nil,
+		stop_chan:    make(chan bool),
 		personal_ids: make(map[int]bool),
 	}
 	return client
@@ -105,24 +105,24 @@ func (c *Client) sendMessage(msg string) error {
 // In case of failure, error is returned
 // This method avoids short-reads
 func (c *Client) receiveMessage() (string, error) {
-    var message bytes.Buffer
-    data := make([]byte, 1024)
+	var message bytes.Buffer
+	data := make([]byte, 1024)
 
-    for {
-        n, err := c.conn.Read(data)
-        if err != nil {
-            if err == io.EOF {
-                break
-            }
-            return "", err
-        }
-        message.Write(data[:n])
-        if bytes.HasSuffix(message.Bytes(), []byte{'\n'}) {
-            break
-        }
-    }
+	for {
+		n, err := c.conn.Read(data)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", err
+		}
+		message.Write(data[:n])
+		if bytes.HasSuffix(message.Bytes(), []byte{'\n'}) {
+			break
+		}
+	}
 
-    return strings.TrimSuffix(message.String(), "\n"), nil
+	return strings.TrimSuffix(message.String(), "\n"), nil
 }
 
 // openFile Opens the file in read mode (it does not create the file if it does not exist)
@@ -161,7 +161,7 @@ func (c *Client) closeFile() error {
 func (c *Client) StopClient() {
 	defer func() {
 		c.stop_chan <- true
-		log.Infof("action: stop_loop | result: success | client_id: %v",
+log.Infof("action: stop_loop | result: success | client_id: %v",
 			c.config.ID,
 		)
 		c.closeClientSocket()
@@ -190,9 +190,7 @@ func (c *Client) StartClientLoop() {
 		)
 		return
 	}
-
 	reader := csv.NewReader(c.data_file)
-
 
 	for {
 		bets := make([]*Bet, 0, c.config.BetChunkSize)
@@ -273,12 +271,12 @@ func (c *Client) StartClientLoop() {
 
 	wait := true
 	for wait {
-		wait, err = c.newMethod()
+		wait, err = c.getWinners()
 		if err != nil {
 			return
 		}
 		select {
-		case <-time.After(c.config.LoopLapse):
+		case <-time.After(c.config.LoopPeriod):
 			// Wait a time between sending one message and the next one
 		case <-c.stop_chan:
 			log.Warnf("action: loop_finished | result: aborted | client_id: %v", c.config.ID)
@@ -287,9 +285,11 @@ func (c *Client) StartClientLoop() {
 	}
 
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+	c.StopClient()
+	os.Exit(0)
 }
 
-func (c *Client) newMethod() (bool, error) {
+func (c *Client) getWinners() (bool, error) {
 	err := c.createClientSocket()
 	defer c.conn.Close()
 	if err != nil {
@@ -349,7 +349,7 @@ func (c *Client) newMethod() (bool, error) {
 				num_winners++
 			}
 		}
-		log.Infof("action: consulta_ganadores | result: success | cant_ganadores %v",
+		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v",
 			num_winners,
 		)
 		wait = false

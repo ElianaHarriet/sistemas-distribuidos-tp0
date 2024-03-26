@@ -63,5 +63,8 @@ Parses a string to a list of Bet objects.
 Example of string: "Bets -> [bet1][bet2][bet3]"
 """
 def parse_bets(bets_str: str) -> list[Bet]:
-    bets_str = bets_str.split("Bets -> ")[1][1:-1]
+    bets_str = bets_str.split("Bets -> ")
+    if len(bets_str) != 2:
+        return []
+    bets_str = bets_str[1][1:-1]
     return [parse_bet(bet_str) for bet_str in bets_str.split("][")]

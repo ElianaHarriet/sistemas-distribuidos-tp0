@@ -214,6 +214,10 @@ func (c *Client) StartClientLoop() {
 			c.personal_ids[bet.GetPersonalID()] = true
         }
 
+		if len(bets) == 0 {
+			break
+		}
+
         // Create the connection the server in every loop iteration
         err = c.createClientSocket()
 		defer c.conn.Close()

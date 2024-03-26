@@ -69,14 +69,26 @@ En esta primera parte del trabajo práctico se plantean una serie de ejercicios 
 ### Ejercicio N°1:
 Modificar la definición del DockerCompose para agregar un nuevo cliente al proyecto.
 
+> **Notas:**  
+Se puede ver sobre el mismo archivo `docker-compose-dev.yaml`
+
 ### Ejercicio N°1.1:
 Definir un script (en el lenguaje deseado) que permita crear una definición de DockerCompose con una cantidad configurable de clientes.
+
+> **Notas:**  
+Se puede ejecutar el script de la forma `./docker-compose-gen <n-clients>` (verificar dar los permisos necesarios al script con `chmod +x docker-compose-gen`)
 
 ### Ejercicio N°2:
 Modificar el cliente y el servidor para lograr que realizar cambios en el archivo de configuración no requiera un nuevo build de las imágenes de Docker para que los mismos sean efectivos. La configuración a través del archivo correspondiente (`config.ini` y `config.yaml`, dependiendo de la aplicación) debe ser inyectada en el container y persistida afuera de la imagen (hint: `docker volumes`).
 
+> **Notas:**  
+Se puede ver sobre el mismo archivo `docker-compose-dev.yaml`
+
 ### Ejercicio N°3:
 Crear un script que permita verificar el correcto funcionamiento del servidor utilizando el comando `netcat` para interactuar con el mismo. Dado que el servidor es un EchoServer, se debe enviar un mensaje al servidor y esperar recibir el mismo mensaje enviado. Netcat no debe ser instalado en la máquina _host_ y no se puede exponer puertos del servidor para realizar la comunicación (hint: `docker network`).
+
+> **Notas:**  
+En la carpeta `test` se encuentra el script `netcat_test.sh` el cual no necesita parámetros para ser ejecutado. Para su correcto funcionamiento, el servidor debe estar corriendo una versión anterior a las apuestas (se recomienda moverse a un commit anterior para realizar el test, los mismos tienen nombres descriptivos para facilitar la búsqueda).
 
 ### Ejercicio N°4:
 Modificar servidor y cliente para que ambos sistemas terminen de forma _graceful_ al recibir la signal SIGTERM. Terminar la aplicación de forma _graceful_ implica que todos los _file descriptors_ (entre los que se encuentran archivos, sockets, threads y procesos) deben cerrarse correctamente antes que el thread de la aplicación principal muera. Loguear mensajes en el cierre de cada recurso (hint: Verificar que hace el flag `-t` utilizado en el comando `docker compose down`).

@@ -104,6 +104,16 @@ Se deberá implementar un módulo de comunicación entre el cliente y el servido
 * Correcta separación de responsabilidades entre modelo de dominio y capa de comunicación.
 * Correcto empleo de sockets, incluyendo manejo de errores y evitando los fenómenos conocidos como [_short read y short write_](https://cs61.seas.harvard.edu/site/2018/FileDescriptors/).
 
+> **Notas sobre el protocolo de comunicación:**  
+Se desarrolló un protocolo sencillo debido a la simplicidad de las funcionalidades a implementar, en donde cada mensaje enviado consta de un única línea. De esta forma, para evitar fenómenos de short read y short write, se envía un mensaje terminado en `\n` y al momento de leer se recibirán chunks de datos hasta encontrar el caracter `\n`.  
+Respecto al envío de datos, se utilizó un formato sencillo, en donde el servidor entiende dos tipos de mensajes: 
+>
+> - Los empezados por `Bets` son apuestas a ser almacenadas.
+> - Los empezados por `Awaiting results` son consultas por la lista de ganadores.  
+>
+>En ambos casos, previo al mensaje se señala el cliente que envía la apuesta o realiza la consulta de la forma `[Client N] <message>`.  
+Para el envío de apuestas, cada apuesta está contenida dentro de corchetes y su información interna separada por comas. Ej.: `[AgencyID:000,ID:7577,Name:SantiagoLionel,Surname:Lorca,PersonalID:30904465,BirthDate:1999-03-17]`.
+
 ### Ejercicio N°6:
 Modificar los clientes para que envíen varias apuestas a la vez (modalidad conocida como procesamiento por _chunks_ o _batchs_). La información de cada agencia será simulada por la ingesta de su archivo numerado correspondiente, provisto por la cátedra dentro de `.data/datasets.zip`.
 Los _batchs_ permiten que el cliente registre varias apuestas en una misma consulta, acortando tiempos de transmisión y procesamiento. La cantidad de apuestas dentro de cada _batch_ debe ser configurable. Realizar una implementación genérica, pero elegir un valor por defecto de modo tal que los paquetes no excedan los 8kB. El servidor, por otro lado, deberá responder con éxito solamente si todas las apuestas del _batch_ fueron procesadas correctamente.
@@ -124,6 +134,10 @@ Modificar el servidor para que permita aceptar conexiones y procesar mensajes en
 En este ejercicio es importante considerar los mecanismos de sincronización a utilizar para el correcto funcionamiento de la persistencia.
 
 En caso de que el alumno implemente el servidor Python utilizando _multithreading_,  deberán tenerse en cuenta las [limitaciones propias del lenguaje](https://wiki.python.org/moin/GlobalInterpreterLock).
+
+> **Notas sobre los mecanismos de sincronización:**  
+Se utilizó un mecanismo de sincronización basado en _locks_ para garantizar la exclusión mutua tanto para el acceso al archivo de apuestas como para el acceso a variables compartidas mediante el Manager (herramienta usada con el fin de compartir información entre los procesos).  
+Con el fin de prevenir deadlocks se creó un lock específico por cada recurso compartido minimizando el tiempo de uso de cada lock.
 
 ## Consideraciones Generales
 Se espera que los alumnos realicen un _fork_ del presente repositorio para el desarrollo de los ejercicios.

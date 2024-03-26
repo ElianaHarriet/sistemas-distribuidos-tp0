@@ -59,7 +59,7 @@ class Server:
             self.__manage_new_bets(msg, client_sock, locks[SAVE_BETS])
         elif "Awaiting results" in msg:
             agency = self.__get_agency_from_msg(msg)
-            self.__manage_results(client_sock, agency, locks[AGENCIES_DONE], locks[WINNERS])
+            self.__manage_results(client_sock, agency, locks[AGENCIES_DONE], locks[WINNERS], locks[SAVE_BETS])
         else:
             self.__send_message(client_sock, "ERROR: Mensaje no reconocido")
 
@@ -79,7 +79,7 @@ class Server:
         for bet in bets:
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
 
-    def __manage_results(self, client_sock, agency, agencies_done_lock, winners_lock):
+    def __manage_results(self, client_sock, agency, agencies_done_lock, winners_lock, save_bets_lock):
         agencies_done_lock.acquire()
         self._agencies_done[agency] = True
         all_done = self.__all_agencies_done()
@@ -89,7 +89,9 @@ class Server:
             self.__close_client_connection(client_sock.fileno())
             return
         winners_lock.acquire()
+        save_bets_lock.acquire()
         winners = self.__get_winners()
+        save_bets_lock.release()
         winners_lock.release()
         winners = ','.join(winners)
         self.__send_message(client_sock, f"OK: Sorteo realizado | Ganadores:{winners}")

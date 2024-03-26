@@ -15,52 +15,80 @@ import (
 // In case of failure, error is returned
 // This method avoids short-write
 func (c *Client) sendMessage(msg string) error {
-	msgBytes := []byte(fmt.Sprintf("%s\n", msg))
+    msgBytes := []byte(fmt.Sprintf("%s\n", msg))
 
-	totalSent := 0
-	for totalSent < len(msgBytes) {
-		sent, err := c.conn.Write(msgBytes[totalSent:])
-		if err != nil {
-			log.Fatalf("action: send_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.StopClient()
-			return err
-		}
-		totalSent += sent
-	}
+    totalSent := 0
+    writeErr := make(chan error, 1)
+    go func() {
+        for totalSent < len(msgBytes) {
+            sent, err := c.conn.Write(msgBytes[totalSent:])
+            if err != nil {
+                log.Fatalf("action: send_message | result: fail | client_id: %v | error: %v",
+                    c.config.ID,
+                    err,
+                )
+                c.StopClient()
+                writeErr <- err
+                return
+            }
+            totalSent += sent
+        }
+        writeErr <- nil
+    }()
 
-	return nil
+    select {
+    case <-c.stop_chan:
+        return fmt.Errorf("stopped by user")
+    case err := <-writeErr:
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
 }
 
 // receiveMessage Receives a message from the server
 // In case of failure, error is returned
 // This method avoids short-reads
 func (c *Client) receiveMessage() (string, error) {
-	var message bytes.Buffer
-	data := make([]byte, 1024)
+    var message bytes.Buffer
+    data := make([]byte, 1024)
 
-	for {
-		n, err := c.conn.Read(data)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Fatalf("action: receive_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.StopClient()
-			return "", err
-		}
-		message.Write(data[:n])
-		if bytes.HasSuffix(message.Bytes(), []byte{'\n'}) {
-			break
-		}
-	}
+    readErr := make(chan error, 1)
+    go func() {
+        for {
+            n, err := c.conn.Read(data)
+            if err != nil {
+                if err == io.EOF {
+                    break
+                }
+                log.Fatalf("action: receive_message | result: fail | client_id: %v | error: %v",
+                    c.config.ID,
+                    err,
+                )
+                c.StopClient()
+                readErr <- err
+                return
+            }
+            message.Write(data[:n])
+            if bytes.HasSuffix(message.Bytes(), []byte{'\n'}) {
+                break
+            }
+        }
+        readErr <- nil
+    }()
 
-	return strings.TrimSuffix(message.String(), "\n"), nil
+    select {
+    case <-c.stop_chan:
+        return "", fmt.Errorf("stopped by user")
+    case err := <-readErr:
+        if err != nil {
+            return "", err
+        }
+    }
+
+    return strings.TrimSuffix(message.String(), "\n"), nil
 }
 
 // sendBets Sends a list of bets to the server

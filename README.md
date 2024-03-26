@@ -124,11 +124,18 @@ Respecto al envío de datos, se utilizó un formato sencillo, en donde el servid
 > - Los empezados por `Awaiting results` son consultas por la lista de ganadores.  
 >
 >En ambos casos, previo al mensaje se señala el cliente que envía la apuesta o realiza la consulta de la forma `[Client N] <message>`.  
-Para el envío de apuestas, cada apuesta está contenida dentro de corchetes y su información interna separada por comas. Ej.: `[AgencyID:000,ID:7577,Name:SantiagoLionel,Surname:Lorca,PersonalID:30904465,BirthDate:1999-03-17]`.
+Para el envío de apuestas, cada apuesta está contenida dentro de corchetes y su información interna separada por comas. Ej.: `[AgencyID:000,ID:7577,Name:SantiagoLionel,Surname:Lorca,PersonalID:30904465,BirthDate:1999-03-17]`.  
+Para la respuesta del servidor al cliente se usaron mensajes de éxito, error o espera:
+>
+> - `OK: <message>` para mensajes de éxito.
+> - `ERROR: <message>` para mensajes de error.
+> - `WAIT: <message>` para mensajes de espera.
+>
+>En el caso del envío de documentos, se envía un mensaje de éxito con la lista de ganares separados por `,`.
 
 ### Ejercicio N°6:
 Modificar los clientes para que envíen varias apuestas a la vez (modalidad conocida como procesamiento por _chunks_ o _batchs_). La información de cada agencia será simulada por la ingesta de su archivo numerado correspondiente, provisto por la cátedra dentro de `.data/datasets.zip`.
-Los _batchs_ permiten que el cliente registre varias apuestas en una misma consulta, acortando tiempos de transmisión y procesamiento. La cantidad de apuestas dentro de cada _batch_ debe ser configurable. Realizar una implementación genérica, pero elegir un valor por defecto de modo tal que los paquetes no excedan los 8kB. El servidor, por otro lado, deberá responder con éxito solamente si todas las apuestas del _batch_ fueron procesadas correctamente.
+Los _batchs_ permiten que el cliente registre varias apuestas en una misma consulta, acortando tiempos de transmisión y procesamiento. La cantidad de apuestas dentro de cada _batch_ debe ser configurable. Realizar una implementación genérica, pero elegir un valor por defecto de modo tal que los paquetes no excedan los 8kB. El servidor, por otro lado, deberá responder con éxito solamente si todas las apuestas del _batch_ fueron procesadas correctamente.  
 
 ### Ejercicio N°7:
 Modificar los clientes para que notifiquen al servidor al finalizar con el envío de todas las apuestas y así proceder con el sorteo.

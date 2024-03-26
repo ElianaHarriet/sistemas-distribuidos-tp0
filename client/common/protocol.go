@@ -132,17 +132,10 @@ func (c *Client) getWinners(result string) (bool, error) {
 	num_winners := 0
 	for _, winner := range winners {
 		winner_id, err := strconv.Atoi(winner)
-		if err != nil {
-			log.Fatalf("action: convert_winner | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			c.StopClient()
-			return true, err
-		}
-		if _, ok := c.personal_ids[winner_id]; ok {
+		if err == nil && c.personal_ids[winner_id] {
 			num_winners++
 		}
+
 	}
 	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v",
 		num_winners,

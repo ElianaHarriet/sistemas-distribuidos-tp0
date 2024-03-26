@@ -1,30 +1,31 @@
 package common
 
 import (
+	"encoding/csv"
 	"fmt"
 	"strconv"
-	"encoding/csv"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Bet struct that represents a bet
 type Bet struct {
-	AgencyID	int		// agency number
-	ID	   		int		// bet number
-	Name   		string
-	Surname 	string
-	PersonalID  int
-	BirthDate   string
+	AgencyID   int // agency number
+	ID         int // bet number
+	Name       string
+	Surname    string
+	PersonalID int
+	BirthDate  string
 }
-
 
 // NewBet Initializes a new bet
 func NewBet(AgencyID int, id int, name string, surname string, personalID int, birthDate string) *Bet {
 	return &Bet{
-		ID: id,
-		Name: name,
-		Surname: surname,
+		ID:         id,
+		Name:       name,
+		Surname:    surname,
 		PersonalID: personalID,
-		BirthDate: birthDate,
+		BirthDate:  birthDate,
 	}
 }
 
@@ -51,23 +52,10 @@ func FromCSV(agencyID int, record []string) (*Bet, error) {
 	}, nil
 }
 
-
 // ToStr Returns a string representation of the bet
 func (b *Bet) ToStr() string {
 	return fmt.Sprintf("[AgencyID:%d,ID:%d,Name:%s,Surname:%s,PersonalID:%d,BirthDate:%s]",
-						b.AgencyID, b.ID, b.Name, b.Surname, b.PersonalID, b.BirthDate)
-}
-
-// Duplicate Returns a new bet with the same values as the original but with a new ID
-func (b *Bet) Duplicate() *Bet {
-	return &Bet{
-		AgencyID: b.AgencyID,
-		ID: (b.ID % 9999) + 1,
-		Name: b.Name,
-		Surname: b.Surname,
-		PersonalID: b.PersonalID,
-		BirthDate: b.BirthDate,
-	}
+		b.AgencyID, b.ID, b.Name, b.Surname, b.PersonalID, b.BirthDate)
 }
 
 // GetBetID Returns the bet ID
@@ -80,17 +68,28 @@ func (b *Bet) GetPersonalID() int {
 	return b.PersonalID
 }
 
-// ReadBet Reads a bet from a CSV file
-func ReadBet(agencyID int, reader *csv.Reader) (*Bet, error) {
-    record, err := reader.Read()
-    if err != nil {
-        return nil, err
-    }
+// readBet Reads a bet from a CSV file
+func readBet(agencyID int, reader *csv.Reader) (*Bet, error) {
+	record, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
 
-    bet, err := FromCSV(agencyID, record)
-    if err != nil {
-        return nil, err
-    }
+	bet, err := FromCSV(agencyID, record)
+	if err != nil {
+		return nil, err
+	}
 
-    return bet, nil
+	return bet, nil
+}
+
+// logBets Logs the bets to the console
+func logBets(bets []*Bet, result string) {
+	for _, bet := range bets {
+		log.Infof("action: apuesta_enviada | result: %s | dni: %v | numero: %v",
+			result,
+			bet.GetPersonalID(),
+			bet.GetBetID(),
+		)
+	}
 }

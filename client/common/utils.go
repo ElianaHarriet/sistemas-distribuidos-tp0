@@ -97,17 +97,11 @@ func (c *Client) waitOrStop() bool {
 // Returns true if the client should wait for the results and keep
 // asking for them
 func (c *Client) askResults() (bool, error) {
-	err := c.createClientSocket()
-	defer c.conn.Close()
-	if err != nil {
-		return false, err
-	}
-
 	message := fmt.Sprintf(
 		"[CLIENT %v] Awaiting results",
 		c.config.ID,
 	)
-	err = c.sendMessage(message)
+	err := c.sendMessage(message)
 
 	if err != nil {
 		return false, err
@@ -118,20 +112,14 @@ func (c *Client) askResults() (bool, error) {
 		return false, err
 	}
 
-	log.Infof("action: receive_message | result: success | client_id: %v | message: %v",
-		c.config.ID,
-		result,
-	)
-
 	wait, shouldReturn, returnValue1 := c.manageServerResponse(result)
 	if shouldReturn {
+		log.Fatalf("action: consulta_ganadores | result: fail | %v",
+			result,
+		)
 		return false, returnValue1
 	}
 
-	err = c.closeClientSocket()
-	if err != nil {
-		return false, err
-	}
 	return wait, nil
 }
 
@@ -140,16 +128,10 @@ func (c *Client) askResults() (bool, error) {
 // asking for them
 func (c *Client) manageServerResponse(result string) (bool, bool, error) {
 	wait := true
-	if strings.HasPrefix(result, "OK") {
-		shouldReturn, returnValue1 := c.getWinners(result)
-		if shouldReturn {
-			return false, true, returnValue1
-		}
+	if strings.HasPrefix(result, "OK: Sorteo") {
+		c.getWinners(result)
 		wait = false
 	} else if strings.HasPrefix(result, "ERROR") {
-		log.Fatalf("action: consulta_ganadores | result: fail | %v",
-			result,
-		)
 		c.StopClient()
 		err := errors.New(result)
 		return false, true, err

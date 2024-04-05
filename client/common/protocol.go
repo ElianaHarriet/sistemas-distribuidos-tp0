@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -94,12 +93,6 @@ func (c *Client) receiveMessage() (string, error) {
 // sendBets Sends a list of bets to the server
 // In case of failure, true is returned
 func sendBets(c *Client, bets []*Bet) bool {
-	err := c.createClientSocket()
-	defer c.conn.Close()
-	if err != nil {
-		return true
-	}
-
 	betStrings := make([]string, len(bets))
 	for i, bet := range bets {
 		betStrings[i] = bet.ToStr()
@@ -111,16 +104,11 @@ func sendBets(c *Client, bets []*Bet) bool {
 		c.config.ID,
 		joinedBets,
 	)
-	err = c.sendMessage(message)
+	err := c.sendMessage(message)
 
 	if err != nil {
 		logBets(bets, "fail")
 		c.StopClient()
-		return true
-	}
-
-	err = c.closeClientSocket()
-	if err != nil {
 		return true
 	}
 
@@ -155,18 +143,9 @@ func (c *Client) readBets(reader *csv.Reader) ([]*Bet, bool, bool) {
 
 // getWinners Gets the winners from the server
 // In case of failure, true is returned
-func (c *Client) getWinners(result string) (bool, error) {
+func (c *Client) getWinners(result string) {
 	winners := strings.Split(strings.Split(result, ":")[2], ",")
-	num_winners := 0
-	for _, winner := range winners {
-		winner_id, err := strconv.Atoi(winner)
-		if err == nil && c.personal_ids[winner_id] {
-			num_winners++
-		}
-
-	}
 	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v",
-		num_winners,
+		len(winners),
 	)
-	return false, nil
 }

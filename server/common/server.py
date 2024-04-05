@@ -1,13 +1,14 @@
 import socket
 import logging
 from common.utils import parse_bets, store_bets, load_bets, has_won
-from multiprocessing import Process, Manager, Lock
+from multiprocessing import Process, Manager, Lock, Semaphore
 from os import kill
 from signal import SIGTERM
 
 AGENCIES_DONE = "AGENCIES_DONE"
-WINNERS = "WINNERS"
 SAVE_BETS = "SAVE_BETS"
+MAX_TRIES = 10
+MAX_THREADS = 5 # In this case is the number of agencies
 
 
 class Server:
@@ -23,25 +24,23 @@ class Server:
     def run(self):
         with self._manager as manager:
             self._connections = manager.list()  # shared list
-            self._connections_lock = Lock()
             self._processes = manager.list()  # shared list
-            self._processes_lock = Lock()
             self._agencies_done = manager.dict()  # shared dict
             self._winners = manager.list()  # shared list
-            locks = {AGENCIES_DONE: Lock(), WINNERS: Lock(), SAVE_BETS: Lock()}
+            locks = {AGENCIES_DONE: Lock(), SAVE_BETS: Lock()}
+            semaphore = Semaphore(MAX_THREADS)
 
             for i in range(self._n_agencies):
                 self._agencies_done[i + 1] = False
 
             while True:
+                semaphore.acquire()
                 client_sock = self.__accept_new_connection()
-                p = Process(target=self.__handle_client_connection, args=(client_sock.fileno(), locks))
+                p = Process(target=self.__handle_client_connection, args=(client_sock.fileno(), locks, semaphore))
                 p.start()
-                self._processes_lock.acquire()
                 self._processes.append(p.pid)
-                self._processes_lock.release()
 
-    def __handle_client_connection(self, client_sock_fd, locks):
+    def __handle_client_connection(self, client_sock_fd, locks, semaphore):
         """
         Read message from a specific client socket and closes the socket
 
@@ -49,55 +48,61 @@ class Server:
         client socket will also be closed
         """
         client_sock = socket.fromfd(client_sock_fd, socket.AF_INET, socket.SOCK_STREAM)
-        self._connections_lock.acquire()
         self._connections.append(client_sock.fileno())
-        self._connections_lock.release()
-        msg = self.__receive_line(client_sock)
-        if msg is None:
-            return
-        if "Bets" in msg:
-            self.__manage_new_bets(msg, client_sock, locks[SAVE_BETS])
-        elif "Awaiting results" in msg:
-            agency = self.__get_agency_from_msg(msg)
-            self.__manage_results(client_sock, agency, locks[AGENCIES_DONE], locks[WINNERS], locks[SAVE_BETS])
-        else:
-            self.__send_message(client_sock, "ERROR: Mensaje no reconocido")
+        msg_buffer = ""
+        msg, msg_buffer = self.__receive_line(client_sock, msg_buffer)
+        not_break = True
+        personal_ids = set()
+        while msg and not_break:
+            if "Bets" in msg:
+                not_break = self.__manage_new_bets(msg, client_sock, personal_ids, locks[SAVE_BETS])
+            elif "Awaiting results" in msg:
+                agency = self.__get_agency_from_msg(msg)
+                not_break = self.__manage_results(client_sock, agency, personal_ids, locks[AGENCIES_DONE], locks[SAVE_BETS])
+            else:
+                self.__send_message(client_sock, "ERROR: Mensaje no reconocido")
+            msg, msg_buffer = self.__receive_line(client_sock, msg_buffer)
+        self.__close_client_connection(client_sock.fileno())
+        semaphore.release()
+            
 
-    def __manage_new_bets(self, msg, client_sock, save_bets_lock):
+    def __manage_new_bets(self, msg, client_sock, personal_ids, save_bets_lock):
         try:
             bets = parse_bets(msg)
         except Exception as e:
             logging.error(f'action: parse_bets | result: fail | error: {e} | msg: {msg}')
             self.__send_message(client_sock, "ERROR: Error al parsear las apuestas")
-            self.__close_client_connection(client_sock.fileno())
-            return
+            return False
         self.__send_message(client_sock, f"OK: Apuestas recibidas | Cantidad:{len(bets)}")
-        self.__close_client_connection(client_sock.fileno())
         save_bets_lock.acquire()
         store_bets(bets)
+        for bet in bets:
+            personal_ids.add(bet.document)
         save_bets_lock.release()
         for bet in bets:
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+        return True
 
-    def __manage_results(self, client_sock, agency, agencies_done_lock, winners_lock, save_bets_lock):
+    def __manage_results(self, client_sock, agency, personal_ids, agencies_done_lock, save_bets_lock):
         agencies_done_lock.acquire()
         self._agencies_done[agency] = True
         all_done = self.__all_agencies_done()
         agencies_done_lock.release()
         if not all_done:
             self.__send_message(client_sock, "WAIT: Esperando a las otras agencias")
-            self.__close_client_connection(client_sock.fileno())
-            return
-        winners_lock.acquire()
+            return True
         save_bets_lock.acquire()
         winners = self.__get_winners()
+        agency_winners = []
+        for winner in winners:
+            if winner in personal_ids:
+                agency_winners.append(winner)
         save_bets_lock.release()
-        winners_lock.release()
-        winners = ','.join(winners)
-        self.__send_message(client_sock, f"OK: Sorteo realizado | Ganadores:{winners}")
-        self.__close_client_connection(client_sock.fileno())
+        agency_winners = ','.join(agency_winners)
+        self.__send_message(client_sock, f"OK: Sorteo realizado | Ganadores:{agency_winners}")
+        return False
 
-    def __receive_line(self, client_sock):
+    def __receive_line(self, client_sock, msg_buffer):
         """
         Read a line message from a specific client socket
 
@@ -107,24 +112,22 @@ class Server:
         It also avoids short-writes
         """
         try:
-            length = 0
-            message = b''
-            while True:
+            tries = 0
+            while not "\n" in msg_buffer:
+                tries += 1
                 chunk = client_sock.recv(1024)
-                if not chunk:
-                    break
-                message += chunk
-                length += len(chunk)
-                if message.endswith(b'\n'): # this will cause no problems because every client send only one message ending in '\n'
-                    break
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {message}')
-            return message.decode('utf-8').rstrip()
+                if not chunk and tries == MAX_TRIES:
+                    logging.error(f'action: receive_message | result: fail | error: connection closed')
+                    return None, msg_buffer
+                elif not chunk:
+                    continue
+                msg_buffer += chunk.decode('utf-8')
+            msg, _, msg_buffer = msg_buffer.partition("\n")
+            logging.info(f'action: receive_message | result: success | ip: {client_sock.getpeername()[0]} | msg: {msg}')
+            return msg.rstrip(), msg_buffer
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
-            client_sock.close()
-            self._connections.remove(client_sock)
-            return None
+            return None, msg_buffer
     
     def __send_message(self, client_sock, msg):
         """
@@ -147,9 +150,7 @@ class Server:
         """
         Closes the client socket and removes it from the connections set
         """
-        self._connections_lock.acquire()
         self._connections.remove(client_sock_fd)
-        self._connections_lock.release()
         client_sock = socket.fromfd(client_sock_fd, socket.AF_INET, socket.SOCK_STREAM) 
         client_sock.close()
 
@@ -200,14 +201,10 @@ class Server:
         """
         Closes all the file descriptors and sockets
         """
-        self._processes_lock.acquire()
         for pid in self._processes:
             kill(pid, SIGTERM)
-        self._processes_lock.release()
-        self._connections_lock.acquire()
         for client_sock_fd in self._connections:
             client_sock = socket.fromfd(client_sock_fd, socket.AF_INET, socket.SOCK_STREAM) 
             client_sock.shutdown(socket.SHUT_RDWR)
             client_sock.close()
-        self._connections_lock.release()
         self._server_socket.close()

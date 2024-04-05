@@ -14,4 +14,3 @@ class ServerManager:
     def sigterm_handler(self, signum, frame):
         logging.info("SIGTERM received, stopping server...")
         self.server.stop()
-        sys.exit(0)

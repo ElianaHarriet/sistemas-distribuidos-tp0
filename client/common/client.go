@@ -56,6 +56,12 @@ func (c *Client) StartClientLoop() {
 
 	reader := csv.NewReader(c.data_file)
 
+	err = c.createClientSocket()
+	defer c.conn.Close()
+	if err != nil {
+		return
+	}
+
 	for {
 		bets, end, shouldReturn1 := c.readBets(reader)
 		if shouldReturn1 {
@@ -71,7 +77,26 @@ func (c *Client) StartClientLoop() {
 		if end {
 			break
 		}
-		shouldReturn := c.waitOrStop()
+
+		result, err := c.receiveMessage()
+		if err != nil {
+			return
+		}
+		if len(result) == 0 {
+			log.Warnf("action: receive_message | result: fail | client_id: %v | error: empty message",
+				c.config.ID,
+			)
+			c.StopClient()
+			return
+		}
+
+		_, shouldReturn, _ := c.manageServerResponse(result)
+		if shouldReturn {
+			c.StopClient()
+			return
+		}
+
+		shouldReturn = c.waitOrStop()
 		if shouldReturn {
 			return
 		}
@@ -88,6 +113,11 @@ func (c *Client) StartClientLoop() {
 		if shouldReturn {
 			return
 		}
+	}
+
+	err = c.closeClientSocket()
+	if err != nil {
+		return
 	}
 
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)

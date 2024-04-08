@@ -117,7 +117,10 @@ Se deberá implementar un módulo de comunicación entre el cliente y el servido
 * Correcto empleo de sockets, incluyendo manejo de errores y evitando los fenómenos conocidos como [_short read y short write_](https://cs61.seas.harvard.edu/site/2018/FileDescriptors/).
 
 > **Notas sobre el protocolo de comunicación:**  
-Se desarrolló un protocolo sencillo debido a la simplicidad de las funcionalidades a implementar, en donde cada mensaje enviado consta de un única línea. De esta forma, para evitar fenómenos de short read y short write, se envía un mensaje terminado en `\n` y al momento de leer se recibirán chunks de datos hasta encontrar el caracter `\n`.  
+Se desarrolló un protocolo sencillo debido a la simplicidad de las funcionalidades a implementar, en donde cada mensaje enviado consta de un única línea. De esta forma, para evitar fenómenos de short read y short write, se envía un mensaje terminado en `\n` y al momento de leer se recibirán chunks de datos hasta encontrar el caracter `\n` en alguna parte del mansaje.  
+- Para el caso del servidor se guarda un buffer con el restante si es que el '\n' no se encuentra en el final del mensaje recibido.  
+- Para el caso del cliente, se sabe que el servidor no enviará dos mensajes juntos. De esta forma, entre cada mensaje enviado se espera la respuesta del servidor antes de enviar el siguiente, y al recibirlo se leen bytes hasta encontrar el caracter '\n' (que estará al final de forma asegurada).
+
 Respecto al envío de datos, se utilizó un formato sencillo, en donde el servidor entiende dos tipos de mensajes: 
 >
 > - Los empezados por `Bets` son apuestas a ser almacenadas.
@@ -155,7 +158,7 @@ En este ejercicio es importante considerar los mecanismos de sincronización a u
 En caso de que el alumno implemente el servidor Python utilizando _multithreading_,  deberán tenerse en cuenta las [limitaciones propias del lenguaje](https://wiki.python.org/moin/GlobalInterpreterLock).
 
 > **Notas sobre los mecanismos de sincronización:**  
-Se utilizó un mecanismo de sincronización basado en _locks_ para garantizar la exclusión mutua tanto para el acceso al archivo de apuestas como para el acceso a variables compartidas mediante el Manager (herramienta usada con el fin de compartir información entre los procesos).  
+Se utilizó un mecanismo de sincronización basado en _locks_ para garantizar la exclusión mutua en recursos compartidos. Los locks fueron utilizados con la sentencia `with` para garantizar que se liberen al finalizar el bloque de código.
 Con el fin de prevenir deadlocks se creó un lock específico por cada recurso compartido minimizando el tiempo de uso de cada lock.
 
 ## Consideraciones Generales

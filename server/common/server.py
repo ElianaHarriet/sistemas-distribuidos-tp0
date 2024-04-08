@@ -74,30 +74,27 @@ class Server:
             self.__send_message(client_sock, "ERROR: Error al parsear las apuestas")
             return False
         self.__send_message(client_sock, f"OK: Apuestas recibidas | Cantidad:{len(bets)}")
-        save_bets_lock.acquire()
-        store_bets(bets)
-        for bet in bets:
-            personal_ids.add(bet.document)
-        save_bets_lock.release()
+        with save_bets_lock:
+            store_bets(bets)
+            for bet in bets:
+                personal_ids.add(bet.document)
         for bet in bets:
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
         return True
 
     def __manage_results(self, client_sock, agency, personal_ids, agencies_done_lock, save_bets_lock):
-        agencies_done_lock.acquire()
-        self._agencies_done[agency] = True
-        all_done = self.__all_agencies_done()
-        agencies_done_lock.release()
+        with agencies_done_lock:
+            self._agencies_done[agency] = True
+            all_done = self.__all_agencies_done()
         if not all_done:
             self.__send_message(client_sock, "WAIT: Esperando a las otras agencias")
             return True
-        save_bets_lock.acquire()
-        winners = self.__get_winners()
-        agency_winners = []
-        for winner in winners:
-            if winner in personal_ids:
-                agency_winners.append(winner)
-        save_bets_lock.release()
+        with save_bets_lock:
+            winners = self.__get_winners()
+            agency_winners = []
+            for winner in winners:
+                if winner in personal_ids:
+                    agency_winners.append(winner)
         agency_winners = ','.join(agency_winners)
         self.__send_message(client_sock, f"OK: Sorteo realizado | Ganadores:{agency_winners}")
         return False

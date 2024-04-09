@@ -118,10 +118,10 @@ Se deberá implementar un módulo de comunicación entre el cliente y el servido
 
 > **Notas sobre el protocolo de comunicación:**  
 Se desarrolló un protocolo sencillo debido a la simplicidad de las funcionalidades a implementar, en donde cada mensaje enviado consta de un única línea. De esta forma, para evitar fenómenos de short read y short write, se envía un mensaje terminado en `\n` y al momento de leer se recibirán chunks de datos hasta encontrar el caracter `\n` en alguna parte del mansaje.  
-- Para el caso del servidor se guarda un buffer con el restante si es que el '\n' no se encuentra en el final del mensaje recibido.  
-- Para el caso del cliente, se sabe que el servidor no enviará dos mensajes juntos. De esta forma, entre cada mensaje enviado se espera la respuesta del servidor antes de enviar el siguiente, y al recibirlo se leen bytes hasta encontrar el caracter '\n' (que estará al final de forma asegurada).
-
-Respecto al envío de datos, se utilizó un formato sencillo, en donde el servidor entiende dos tipos de mensajes: 
+> - Para el caso del servidor se guarda un buffer con el restante si es que el '\n' no se encuentra en el final del mensaje recibido.  
+> - Para el caso del cliente, se sabe que el servidor no enviará dos mensajes juntos. De esta forma, entre cada mensaje enviado se espera la respuesta del servidor antes de enviar el siguiente, y al recibirlo se leen bytes hasta encontrar el caracter '\n' (que estará al final de forma asegurada).
+>
+> Respecto al envío de datos, se utilizó un formato sencillo, en donde el servidor entiende dos tipos de mensajes: 
 >
 > - Los empezados por `Bets` son apuestas a ser almacenadas.
 > - Los empezados por `Awaiting results` son consultas por la lista de ganadores.  
@@ -135,6 +135,17 @@ Para la respuesta del servidor al cliente se usaron mensajes de éxito, error o 
 > - `WAIT: <message>` para mensajes de espera.
 >
 >En el caso del envío de documentos, se envía un mensaje de éxito con la lista de ganares separados por `,`.
+> 
+> Notas:
+> - Para el caso de dejar de recibir bytes en una conexión de parte del servidor, se accederá al siguiente fragmento de código 👇 en donde se loggea un error y no se devuelve un mensaje, al recibir `None` se sabe que hubo un problema (se dejaron de recibir bytes y no se puede continuar con la comunicación), de forma que se cierra esa conexión.
+> ```python
+> if not chunk and tries == MAX_TRIES:
+>   logging.error(f'action: receive_message | result: fail | error: connection closed')
+>   return None, msg_buffer
+> ```
+> - Sabemos que vamos a recibir un '\n' debido al protocolo _acordado_ entre cliente y servidor, de esta forma ninguno de los dos quedará esperando infinitamente (en caso de error, por ejemplo que se envíen mensajes sin '\n' de parte del cliente, se terminará ejecutando la nota de arriba recién mencionada). Sin embargo se entiende que es una solución muy ligada al tp y que mientras más genérica sea la solución, mejor. Por lo tanto ya estoy teniendo en cuenta distintas opciones (analizaré entre ellas el TLV) alternativas para el protocolo de comunicación en el siguiente trabajo práctico.
+> - Para la recepción de mensajes por parte del cliente se usó una go routinepor la practicidad para controlar el caso de recibir una señal SIGTERM y cerrar la conexión de forma _graceful_.
+> - Para asegurarse que el cliente no pueda sufrir el fenómeno de short read, se modificó la cantidad de bytes a recibir a 1. De esta forma se emula el caso de recibir pocos bytes y necesitar loopear hasta encontrar el caracter '\n' en el mensaje recibido.
 
 ### Ejercicio N°6:
 Modificar los clientes para que envíen varias apuestas a la vez (modalidad conocida como procesamiento por _chunks_ o _batchs_). La información de cada agencia será simulada por la ingesta de su archivo numerado correspondiente, provisto por la cátedra dentro de `.data/datasets.zip`.

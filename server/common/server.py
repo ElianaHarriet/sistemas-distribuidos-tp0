@@ -110,7 +110,8 @@ class Server:
         """
         try:
             tries = 0
-            while not "\n" in msg_buffer:
+            last_buffer = msg_buffer
+            while not "\n" in last_buffer:
                 tries += 1
                 chunk = client_sock.recv(1024)
                 if not chunk and tries == MAX_TRIES:
@@ -118,7 +119,8 @@ class Server:
                     return None, msg_buffer
                 elif not chunk:
                     continue
-                msg_buffer += chunk.decode('utf-8')
+                last_buffer = chunk.decode('utf-8') # to check efficiently if there is a '\n' in the chunk (in utf-8 it is just a byte)
+                msg_buffer += last_buffer
             msg, _, msg_buffer = msg_buffer.partition("\n")
             logging.info(f'action: receive_message | result: success | ip: {client_sock.getpeername()[0]} | msg: {msg}')
             return msg.rstrip(), msg_buffer
